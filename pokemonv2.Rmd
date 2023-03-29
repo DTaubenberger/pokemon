@@ -1,0 +1,229 @@
+---
+title: "Pokemon Data Visualizations"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+if (!require("DT")) install.packages('DT')
+  
+```
+
+
+```{r packages, include = FALSE}
+library(readxl)
+#library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(L1pack)
+library(yardstick)
+library(dplyr)
+library(GGally)
+library(DT)
+library(ggthemes)
+
+pokemon <- read_excel("C:/Users/dasch/Desktop/Portfolio/pokemon archive/pokemon.xlsx")
+
+```
+```{r include = FALSE}
+summary(pokemon)
+
+```
+```{r}
+poke_data <- subset(pokemon, pokedex_number != 774) #removing this pokemon since there are different stat numbers based on form
+
+#base stats
+poke_base_stats <- poke_data[c("pokedex_number", "name", "type1", "type2","hp", "attack", "defense", "sp_attack", "sp_defense", "speed", "base_total")]
+
+#numerical data
+poke_num_stats <- poke_data[c("pokedex_number", "hp", "attack", "defense", "sp_attack", "sp_defense", "speed", "base_total","weight_kg", "height_m", "base_happiness", "capture_rate","is_legendary")]
+poke_num_stats[] <- lapply(poke_num_stats, function(x) as.numeric(as.character(x)))
+poke_num_stats <- poke_num_stats %>% na.omit()
+```
+## Generation & Base Stats
+
+This first set of box and whisker plots looks into the base statistics of Pokemon by generation. This data set contains generations 1 through 7. The base stats the are being looked at are attack, defense, special attack, special defense, and speed. The goal for this is to see if there are any generations that stand out in terms of base statistics.
+
+What is interesting is that no generation stands out when looking at the averages of the all of the base statistics. The averages do change between the generations but there is not one that really stands out. What does stand out is that there are no outliers below the average. All outliers are abover the average.
+
+```{r generation}
+attack_box_plot <- ggplot(aes(group=generation,x= generation, y=attack, color=generation),data=poke_data) + geom_boxplot() + labs(x= "Generation (1-7)", y="Attack", title = "Attack Stats by Generation") + theme_solarized() +scale_fill_solarized()
+
+defense_box_plot <- ggplot(aes(group=generation,x= generation, y=defense, color=generation),data=poke_data) + geom_boxplot() + labs(x= "Generation (1-7)", y="Defense", title = "Defense Stats by Generation")+ theme_solarized() +scale_fill_solarized()
+# Arrange Box Plots Side-by-Side
+ggarrange(attack_box_plot, defense_box_plot, ncol = 1)
+
+sp_attack_box_plot <- ggplot(aes(group=generation,x= generation, y=sp_attack, color=generation),data=poke_data) + geom_boxplot() + labs(x= "Generation (1-7)", y="Special Attack", title = "Special Attack Stats by Generation") + theme_solarized() +scale_fill_solarized()
+
+sp_defense_box_plot <- ggplot(aes(group=generation,x= generation, y=sp_defense, color=generation),data=poke_data) + geom_boxplot() + labs(x= "Generation (1-7)", y="Special Defense", title = "Special Defense Stats by Generation")+ theme_solarized() +scale_fill_solarized()
+# Arrange Box Plots Side-by-Side
+ggarrange(sp_attack_box_plot, sp_defense_box_plot, ncol = 1)
+
+speed_box_plot <- ggplot(aes(group=generation,x= generation, y=speed, color=generation),data=poke_data) + geom_boxplot() + labs(x= "Generation (1-7)", y="Speed", title = "Speed Stats by Generation")+ theme_solarized() +scale_fill_solarized()
+speed_box_plot
+
+```
+
+
+
+## Primary Type & Base Stats
+
+Next group of box and whisker plots looks into the base statistics of Pokemon by primary type. There are 18 primary types. Primary type is used here because some Pokemon have secondary types, but not all of them. 
+The primary typing compared to generations is much different. There are certain types that really stand out in each of the base statistics.For example, steel typing has the best defense stat on average, dragon has the best attack, special attack is not as dramatic but psyche has the best here, fairy is the same way with special defense, and flying has the best speed stat. 
+```{r primarytype}
+
+# Boxplot of Defense Stats by Primary Type
+def_type <- ggplot(data=poke_base_stats, mapping=aes( x=defense, color=type1))+geom_boxplot()+coord_flip()+labs(title="Defense Statistics by Primary Type")+ theme_solarized() +scale_fill_solarized()
+def_type
+# Boxplot of Attack Stats by Primary Type
+att_type <- ggplot(data=poke_base_stats, mapping=aes( x=attack, color=type1))+geom_boxplot()+coord_flip()+labs(title="Attack Statistics by Primary Type")+ theme_solarized() +scale_fill_solarized()
+att_type
+
+
+# Boxplot of special Defense Stats by Primary Type
+sp_def_type <- ggplot(data=poke_base_stats, mapping=aes( x=sp_defense, color=type1))+geom_boxplot()+coord_flip()+labs(title="Special Defense Statistics by Primary Type")+ theme_solarized() +scale_fill_solarized()
+sp_def_type
+# Boxplot of Attack Stats by Primary Type
+sp_att_type <- ggplot(data=poke_base_stats, mapping=aes( x=sp_attack, color=type1))+geom_boxplot()+coord_flip()+labs(title="Special Attack Statistics by Primary Type")+ theme_solarized() +scale_fill_solarized()
+sp_att_type
+
+speed_type <- ggplot(data=poke_base_stats, mapping=aes( x=speed, color=type1))+geom_boxplot()+coord_flip()+labs(title="Speed Statistics by Primary Type")+ theme_solarized() +scale_fill_solarized()
+speed_type
+
+```
+ This section here are the numeral means from above. 
+```{r overallMeans}
+mean_generation <- poke_data %>%
+  group_by(generation) %>%
+  summarise_at(vars(c("attack", "defense","sp_attack","sp_defense","speed")), mean, na.rm = TRUE) %>%
+  arrange(desc(generation)) 
+datatable(mean_generation)
+
+
+mean_type <- poke_base_stats %>%
+  group_by(type1) %>%
+  summarise_at(vars(c("attack", "defense","sp_attack","sp_defense","speed")), mean, na.rm = TRUE) %>%
+  arrange(desc(type1)) 
+datatable(mean_type)
+```
+
+
+## Relationships Between Base Stats
+
+This section is showing the relationships between the different base statistics. There are not a lot of linear relationships but rather more logarithmic. There are 2 charts here since not all Pokemon have weight and height in the data set and the weight and height relationships are very flat. 
+```{r pairplots}
+# Make a Scatterplot Matrix with Regression Lines for Base Stats
+pairs(poke_base_stats[,5:11], panel=panel.smooth, col='tan',main="Scatterplot Matrix with Regression Lines for Base Stats")
+
+pairs(poke_num_stats[,2:10], panel=panel.smooth, col='tan',main="Scatterplot Matrix with Regression Lines for Numerical Stats")
+
+
+
+
+
+
+```
+
+## Looking At Legendary Pokemon
+This next section is looking at the difference between legendary Pokemon and regular Pokemon. Legendary Pokemon are shown in blue. Surprisingly, legendary Pokemon's base statistics are worse than regular Pokemon. The highest density of each base statistic is less than the highest density point for regular Pokemon. 
+Where Legendary Pokemon do stand out is their size. They are larger in terms of weight and height than regular Pokemon. 
+```{r legendaryPokemon}
+
+poke_num_logical_legendary <- poke_num_stats
+poke_num_logical_legendary$Legendary <- as.logical(poke_num_logical_legendary$is_legendary)
+ggpairs(poke_num_logical_legendary, columns = 2:7, ggplot2::aes(color=Legendary), title = "Scatterplot, Density Graph, and Correlation Coefficient Matrix
+        colored by Legendary Status") + theme_solarized() +scale_fill_solarized()
+
+ggplot(poke_num_logical_legendary) +
+geom_point(aes(x = weight_kg, y = height_m, size = weight_kg, color = is_legendary), alpha = 0.6) +
+geom_text(aes(x = weight_kg, y = height_m, label = pokedex_number), check_overlap = TRUE, 
+            col = "grey50",
+            hjust = 0, 
+            alpha = 0.8) +
+  ggtitle(label='Pokemon Weight and Height Scatterplot') +
+  scale_size_continuous(guide="none")+
+  scale_y_log10("Height (m) (log scale)")+
+  scale_x_log10("Weight (kg) (log scale)")+
+  theme_solarized() +scale_fill_solarized()
+```
+
+## K-Means 
+
+This section is using the K-means algorithm to group together Pokemon using base statistics. The first chart uses the elbow method to determine the optimal number of centers for the algorithm. Each time the code is run there should be a new optimal number of clusters. The second chart uses 18 clusters. This is because there are 18 types of Pokemon. The last chart is a scatter chart using primary type as an indicator. What these 3 charts show is that Pokemon cannot be sorted into their types by their base statistics. If it was sorting the Pokemon into their typings there would be groups of 3 when looking at the results if the k-means since the data set is organized by Pokedex entry and evolution of Pokemon are next to each other and usually their primary type does not change between evolution.  
+```{r kmeans}
+library(stats)
+
+poke_kmeans <- poke_data[c("hp", "attack", "defense", "sp_attack", "sp_defense", "speed", "base_total", "base_happiness", "is_legendary")]
+
+
+wss <- numeric(20)
+for (i in 1:20) {
+  kmeans_model <- kmeans(poke_kmeans, centers = i)
+  wss[i] <- kmeans_model$tot.withinss
+}
+plot(1:20, wss, type = "b", xlab = "Number of clusters (k)", ylab = "Within-cluster sum of squares")
+
+# Identify the elbow point
+elbow <- function(x, y) {
+  segments(x[1],y[1],x[length(x)],y[length(y)])
+  slopes <- (y[-1]-y[-length(y)])/(x[-1]-x[-length(x)])
+  elbow <- which.max(slopes)
+  points(x[elbow], y[elbow], col="red", cex=2, pch=19)
+  return(x[elbow])
+}
+optimal_k <- elbow(1:20, wss)
+cat("Optimal number of clusters (k) = ", optimal_k)
+
+
+kmeans_fit <- kmeans(poke_kmeans, centers = optimal_k)
+
+# View the cluster assignments
+kmeans_fit$cluster
+
+# Add the cluster assignments back to the original dataframe
+poke_data$cluster <- kmeans_fit$cluster
+
+# Plot the results using the "ggplot2" package
+
+kmeans_ideal <- ggplot(poke_data, aes(x = pokedex_number, y = type1, color = factor(cluster))) + 
+  geom_point() +
+  labs(title = "K-means Clustering With Optimal Centers ",
+       x = "Pokedex Number",
+       y = "Primary Type",
+       color = "Cluster") +
+  theme_solarized() +scale_fill_solarized()
+kmeans_ideal
+
+
+kmeans_fit_18 <- kmeans(poke_kmeans, centers = 18)
+
+# View the cluster assignments
+kmeans_fit_18$cluster
+
+# Add the cluster assignments back to the original dataframe
+poke_data$cluster <- kmeans_fit_18$cluster
+
+# Plot the results using the "ggplot2" package
+kmeans_18 <- ggplot(poke_data, aes(x = pokedex_number, y = type1, color = factor(cluster))) + 
+  geom_point() +
+  labs(title = "K-means Clustering With 18 Centers ",
+       x = "Pokedex Number",
+       y = "Primary Type",
+       color = "Cluster") +
+  theme_solarized() +scale_fill_solarized()
+kmeans_18
+
+poke_data$type1
+scatter_type <- ggplot(poke_data, aes(x = pokedex_number, y = type1, color = factor(type1))) + 
+  geom_point() +
+  labs(title = "Scatter Plot by Attack and Defense by Primary Type",
+       x = "Pokedex Number",
+       y = "Primary Type",
+       color = "Cluster") +
+  theme_solarized() +scale_fill_solarized()
+scatter_type
+
+
+```
+
